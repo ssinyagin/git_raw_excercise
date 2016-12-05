@@ -25,6 +25,34 @@ my $r2 = Git::Raw::Repository->init($dir . '/r2', 0);
 my $r3 = Git::Raw::Repository->init($dir . '/r3', 0);
 
 
+my $checkout_notify_cb = sub {
+    my $file = shift;
+    my $why = shift;
+    if( defined($file) ) {
+        printf("Checkout notify %s: %s\n", $file, join(',', @{$why}));
+    }
+    return 0;
+};
+
+my $checkout_progress_cb = sub {
+    my $file = shift;
+    my $completed_steps = shift;
+    my $total_steps = shift;
+    if( defined($file) ) {
+        printf("Checkout progress %s: %d out of %d\n", $file,
+               $completed_steps, $total_steps);
+    }
+    return 0;
+};
+
+
+my $checkout_opts = {
+    'checkout_strategy' => {'safe' => 1},
+    'callbacks' => {'notify' => $checkout_notify_cb,
+                    'progress' => $checkout_progress_cb},
+    'notify' => ['all']
+};
+
 ## Init the producer
 {
     my $remote =
@@ -89,7 +117,7 @@ my $r3 = Git::Raw::Repository->init($dir . '/r3', 0);
     
     $config->str('branch.R2.remote', 'origin');
     $config->str('branch.R2.merge', 'refs/heads/R2');
-    
+
     my $remote = Git::Raw::Remote->load($r3, 'origin');
     $remote->fetch();
     print "OK fetch\n";
@@ -104,7 +132,7 @@ my $r3 = Git::Raw::Repository->init($dir . '/r3', 0);
     $r3->head($branch);
     print "OK head\n";
     
-    $r3->checkout($branch, {'checkout_strategy' => {'safe' => 1}});
+    $r3->checkout($branch, $checkout_opts);
     print "OK checkout\n";
 }
 
@@ -118,10 +146,13 @@ my $r3 = Git::Raw::Repository->init($dir . '/r3', 0);
     $fh = IO::File->new($dir . '/r2/yy2', 'w');
     $fh->print("blahblah2\n");
     $fh->close;
+
+    unlink $dir . '/r2/xx';
     
     my $index = $r2->index;
     $index->add ('yy');
     $index->add ('yy2');
+    $index->remove ('xx');
     $index->write;
     my $tree = $index->write_tree();
     my $me = Git::Raw::Signature->now('Z', 'x@x.com');
@@ -138,10 +169,12 @@ my $r3 = Git::Raw::Repository->init($dir . '/r3', 0);
 }
     
 
+
 ## Pull to the consumer
 {
     my $start = $r3->head()->peel ('tree');
-    print "Current HEAD: ", $r3->head()->name(), " ", $r3->head()->peel ('commit')->id, "\n";
+    print("Current HEAD: ", $r3->head()->name(), " ",
+          $r3->head()->peel ('commit')->id, "\n");
     my $branch = Git::Raw::Branch->lookup($r3, 'R2', 1);    
     die("Cannot lookup branch") unless defined($branch);
     
@@ -155,44 +188,22 @@ my $r3 = Git::Raw::Repository->init($dir . '/r3', 0);
     die('REF3') unless defined($ref);
 
     my $analysis = $r3->merge_analysis($ref);
-    die("Only supports fast-forward merges at this time") if (!grep {$_ eq 'fast_forward'} @$analysis);
+    die("Only supports fast-forward merges at this time")
+        if (!grep {$_ eq 'fast_forward'} @$analysis);
 
     my $commit = $ref->peel('commit');
     my $tree = $commit->tree();
     my $index = $r3->index();
     $index->read_tree($tree);
     $index->write();
-
-    $r3->checkout($tree, {'checkout_strategy' => {'force' => 1}});
+    
+    $r3->checkout($tree, $checkout_opts);
     $r3->head($branch->target($commit));
-
-    print "Detached: ", $r3->is_head_detached(), "\n";
-    print "Final HEAD: ", $r3->head()->name(), " ", $r3->head()->peel ('commit')->id, "\n";
+    
+    print("Final HEAD: ", $r3->head()->name(), " ",
+           $r3->head()->peel ('commit')->id, "\n");
     
     print "OK checkout\n";
-
-    my $end = $r3->head()->peel ('tree');
-
-    print "Working directory is: ", $r3->workdir(), "\n";
-    print "Getting delta $start..$end\n";
-    my $diff = $start->diff ({tree => $end,
-            skip_binary_check => 1,
-            enable_fast_untracked_dirs => 1,
-        });
-    my @patches = $diff->patches();
-    print "Total changed: ", scalar(@patches), "\n";
-    foreach my $patch (@patches)
-    {
-        my $delta = $patch->delta();
-        my $path = $delta->new_file()->path();
-        my $abspath = catfile ($r3->workdir(), $path), "\n";
-        print "Changed: [", $delta->status(), "]: $path\n";
-        die("Could not find '$path' in the working directory") if (!-f $abspath);
-        print "Found '$path' @ '$abspath'\n";
-        print "Content: ", read_file ($abspath);
-    }
-
-    print "OK delta\n";
 }
 
 
