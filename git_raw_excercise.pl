@@ -4,7 +4,9 @@ use warnings;
 use Git::Raw;
 use IO::File;
 use Data::Dumper;
+use File::Spec::Functions qw(catfile);
 use File::Path qw(make_path remove_tree);
+use File::Slurp::Tiny qw(read_file);
 
 
 my $dir = '/tmp/gittest';
@@ -112,9 +114,14 @@ my $r3 = Git::Raw::Repository->init($dir . '/r3', 0);
     my $fh = IO::File->new($dir . '/r2/yy', 'w');
     $fh->print("blahblah\n");
     $fh->close;
+
+    $fh = IO::File->new($dir . '/r2/yy2', 'w');
+    $fh->print("blahblah2\n");
+    $fh->close;
     
     my $index = $r2->index;
     $index->add ('yy');
+    $index->add ('yy2');
     $index->write;
     my $tree = $index->write_tree();
     my $me = Git::Raw::Signature->now('Z', 'x@x.com');
@@ -133,6 +140,7 @@ my $r3 = Git::Raw::Repository->init($dir . '/r3', 0);
 
 ## Pull to the consumer
 {
+    my $start = $r3->head()->peel ('tree');
     print "Current HEAD: ", $r3->head()->name(), " ", $r3->head()->peel ('commit')->id, "\n";
     my $branch = Git::Raw::Branch->lookup($r3, 'R2', 1);    
     die("Cannot lookup branch") unless defined($branch);
@@ -162,6 +170,29 @@ my $r3 = Git::Raw::Repository->init($dir . '/r3', 0);
     print "Final HEAD: ", $r3->head()->name(), " ", $r3->head()->peel ('commit')->id, "\n";
     
     print "OK checkout\n";
+
+    my $end = $r3->head()->peel ('tree');
+
+    print "Working directory is: ", $r3->workdir(), "\n";
+    print "Getting delta $start..$end\n";
+    my $diff = $start->diff ({tree => $end,
+            skip_binary_check => 1,
+            enable_fast_untracked_dirs => 1,
+        });
+    my @patches = $diff->patches();
+    print "Total changed: ", scalar(@patches), "\n";
+    foreach my $patch (@patches)
+    {
+        my $delta = $patch->delta();
+        my $path = $delta->new_file()->path();
+        my $abspath = catfile ($r3->workdir(), $path), "\n";
+        print "Changed: [", $delta->status(), "]: $path\n";
+        die("Could not find '$path' in the working directory") if (!-f $abspath);
+        print "Found '$path' @ '$abspath'\n";
+        print "Content: ", read_file ($abspath);
+    }
+
+    print "OK delta\n";
 }
 
 
