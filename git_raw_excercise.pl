@@ -133,6 +133,7 @@ my $r3 = Git::Raw::Repository->init($dir . '/r3', 0);
 
 ## Pull to the consumer
 {
+    print "Current HEAD: ", $r3->head()->name(), " ", $r3->head()->peel ('commit')->id, "\n";
     my $branch = Git::Raw::Branch->lookup($r3, 'R2', 1);    
     die("Cannot lookup branch") unless defined($branch);
     
@@ -145,7 +146,8 @@ my $r3 = Git::Raw::Repository->init($dir . '/r3', 0);
     my $ref = Git::Raw::Reference->lookup('remotes/origin/R2', $r3 );
     die('REF3') unless defined($ref);
 
-    print Dumper($r3->merge_analysis($ref));
+    my $analysis = $r3->merge_analysis($ref);
+    die("Only supports fast-forward merges at this time") if (!grep {$_ eq 'fast_forward'} @$analysis);
 
     my $commit = $ref->peel('commit');
     my $tree = $commit->tree();
@@ -154,7 +156,10 @@ my $r3 = Git::Raw::Repository->init($dir . '/r3', 0);
     $index->write();
 
     $r3->checkout($tree, {'checkout_strategy' => {'force' => 1}});
-    $r3->head($ref->target($commit));
+    $r3->head($branch->target($commit));
+
+    print "Detached: ", $r3->is_head_detached(), "\n";
+    print "Final HEAD: ", $r3->head()->name(), " ", $r3->head()->peel ('commit')->id, "\n";
     
     print "OK checkout\n";
 }
