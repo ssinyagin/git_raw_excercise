@@ -100,7 +100,9 @@ _commit_all_r1('First large commit');
 _pull_r2();
 _read_data($repodir2, $updated_files);
 
-# Overwrite the same files wioth the same data
+$updated_files = {};
+
+# Overwrite the same files with the same data
 _gen_data_r1($count, 0);
 
 _commit_all_r1('This should be empty commit');
