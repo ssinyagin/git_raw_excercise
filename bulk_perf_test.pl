@@ -5,14 +5,11 @@ use File::Path qw(make_path remove_tree);
 use JSON;
 use IO::File;
 use IO::Dir;
-use List::Util qw (sum);
 use Git::Raw;
 use Time::HiRes qw (time);
 
 my $homedir = $ARGV[0];
 my $count = $ARGV[1];
-
-my $last_update_count = 0;
 
 if( not $homedir or not $count )
 {
@@ -32,10 +29,12 @@ foreach my $dir ($repodir1, $repodir2)
 
 my $updated_files = {};
 
-my $notify_cb = sub {
+my $checkout_progress_cb = sub {
     my $file = shift;
+    my $completed_steps = shift;
+    my $total_steps = shift;
     if( defined($file) ) {
-        ++$updated_files->{$file};
+        $updated_files->{$file} = 1;
     }
     return 0;
 };
@@ -43,8 +42,7 @@ my $notify_cb = sub {
 
 my $checkout_opts = {
     'checkout_strategy' => {'safe' => 1},
-    'notify' => ['updated'],
-    'callbacks' => {'notify' => $notify_cb},
+    'callbacks' => {'progress' => $checkout_progress_cb},
 };
 
 
@@ -118,22 +116,9 @@ sub _signature
     return Git::Raw::Signature->now('Z', 'x@x.com');
 }
 
-sub _total_updates
-{
-    return sum(values %{$updated_files}, 0);
-}
-
-sub _compute_update_delta
-{
-    my $count = _total_updates();
-    my $delta = $count - $last_update_count;
-    $last_update_count = $count;
-    return $delta;
-}
-
 sub _print_updates
 {
-    printf("Total %d updates (delta %d)\n", _total_updates(), _compute_update_delta());
+    printf("Total %d updates\n", scalar(keys %{$updated_files}));
 }
 
 
