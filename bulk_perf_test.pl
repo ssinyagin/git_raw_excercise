@@ -55,6 +55,11 @@ my $prev_ts = $ts_start;
 my $r1 = Git::Raw::Repository->init($repodir1, 0);
 
 {
+    my $config = $r1->config();
+    $config->int('core.bigFileThreshold', 1);
+    $config->int('core.compression', 0);
+    $config->int('core.looseCompression', 0);
+    
     my $index = $r1->index;
     $index->write;
     my $tree = $index->write_tree;
@@ -202,8 +207,11 @@ sub _commit_all_r1
     
     my $index = $r1->index;
     $index->add_all({});
+    _print_time('index->add_all');
     $index->write;
+    _print_time('index->write');
     my $tree = $index->write_tree();
+    _print_time('index->write_tree');
     my $me = _signature();
     my $head = $r1->head->target;
     $r1->commit($msg, $me, $me, [$head], $tree);
