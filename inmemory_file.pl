@@ -196,7 +196,7 @@ my $checkout_opts = {
 	my @patches = $diff->patches();
 	foreach my $patch (@patches)
 	{
-		my $tree = Git::Raw::Tree->lookup ($r3, $end->id());
+		my $tree = $end;
 		my $delta = $patch->delta();
 		my $path = $delta->new_file()->path();
 
