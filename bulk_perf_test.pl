@@ -102,6 +102,12 @@ _read_data($repodir2, $updated_files);
 
 $updated_files = {};
 
+print "Not writing anything\n";
+_commit_all_r1('Commit after not writing anything');
+_pull_r2();
+_read_data($repodir2, $updated_files);
+
+
 # Overwrite the same files with the same data
 _gen_data_r1($count, 0);
 
