@@ -193,11 +193,10 @@ my $checkout_opts = {
 		enable_fast_untracked_dirs => 1,
 	});
 
-	my @patches = $diff->patches();
-	foreach my $patch (@patches)
+	my @deltas = $diff->deltas();
+	foreach my $delta (@deltas)
 	{
 		my $tree = $end;
-		my $delta = $patch->delta();
 		my $path = $delta->new_file()->path();
 
 		if ($delta->status() ne 'deleted')
