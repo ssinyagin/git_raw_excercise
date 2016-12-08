@@ -105,8 +105,6 @@ _commit_all_r1('First large commit');
 _pull_r2();
 _read_data($repodir2, $updated_files);
 
-$updated_files = {};
-
 print "Not writing anything\n";
 _commit_all_r1('Commit after not writing anything');
 _pull_r2();
@@ -120,7 +118,50 @@ _commit_all_r1('This should be empty commit');
 _pull_r2();
 _read_data($repodir2, $updated_files);
 
+# Write more files
+_gen_data_r1($count, $count);
+_commit_all_r1('Second large commit');
+_pull_r2();
+_read_data($repodir2, $updated_files);
 
+# Delete some files
+{
+    my $i = 0;
+    my $n_delete = int($count/3);
+    printf("Deleting %d files\n", $n_delete);
+
+    my $index = $r1->index;
+    while( $i < $n_delete )
+    {
+        my $fname = _data_file_name($i);
+        if( not $index->find($fname) )
+        {
+            printf("Cannot find an entry for %d: %s\n", $i, $fname);
+        }
+        else
+        {
+            $index->remove($fname);
+            unlink( $repodir1 . '/' . $fname );
+        }
+        $i++;
+    }
+
+    _print_time('index->remove');
+    $index->write;
+    _print_time('index->write');
+    my $tree = $index->write_tree();
+    _print_time('index->write_tree');
+    my $me = _signature();
+    my $head = $r1->head->target;
+    my $msg = sprintf('Deleted %d files', $n_delete);
+    $r1->commit($msg, $me, $me, [$head], $tree);
+    _print_time('Commit: ' . $msg);
+}
+
+_pull_r2();
+_read_data($repodir2, $updated_files);
+
+        
 
 sub _signature
 {
@@ -140,6 +181,19 @@ sub _print_time
     printf("%f (%f) %s\n", $now - $ts_start, $now - $prev_ts, $msg);
     $prev_ts = $now;
 }
+
+
+
+sub _data_file_name
+{
+    my $n = shift;
+    my $sha = sha1_hex(sprintf(' %d ', $n));
+    return substr($sha, 0, 2) . '/' .
+        substr($sha, 2, 2) . '/' .
+        substr($sha, 4);
+}
+
+
 
 
 sub _gen_data_r1
@@ -173,26 +227,29 @@ sub _gen_data_r1
 
     my $json = JSON->new;
     $json->canonical(1);
-    
-    my $cnt = 0;
-    while( $cnt++ < $n_nodes )
-    {
-        my $sha = sha1_hex(' ' . ($cnt+$n_start) . ' ');
 
-        my $dir = $repodir1 . '/' . substr($sha, 0, 2) . '/' .
-            substr($sha, 2, 2) . '/';
+    my $index = $r1->index;
+
+    my $cnt = 0;
+    while( $cnt < $n_nodes )
+    {
+        my $fname = _data_file_name($cnt+$n_start);
+        my $filepath = $repodir1 . '/' . $fname;
+        my $dir = substr($filepath, 0, rindex($filepath, '/'));
         
         if( not -d $dir )
         {
             make_path($dir) or die("Cannot mkdir $dir: $!");
         }
-        
-        my $filepath = $dir . $sha;
-        
+                
         my $fh = IO::File->new($filepath, 'w')
             or die("Cannot open $filepath: $!");
         $fh->print($json->encode($data));
         $fh->close;
+
+        $index->add($fname);
+        $cnt++;
+        
     }
     
     _print_time(sprintf('Wrote JSON data to r1: %d nodes, starting from %d',
@@ -207,8 +264,6 @@ sub _commit_all_r1
     
     my $index = $r1->index;
     $index->add_all({});
-    _print_time('index->add_all');
-    $index->write;
     _print_time('index->write');
     my $tree = $index->write_tree();
     _print_time('index->write_tree');
@@ -277,6 +332,8 @@ sub _read_data
             
             $fh->close;
             $count_read++;
+
+            delete $files->{$fname};
         }
         else
         {
@@ -285,7 +342,7 @@ sub _read_data
     }
 
     _print_time(sprintf('Read %d files, deleted %d files',
-                        $count_read, $count_deleted));    
+                        $count_read, $count_deleted));
 }
 
 
