@@ -33,6 +33,20 @@ $branch->move('DataTree', 1);
 
 
 
+sub_add_commit
+{
+    my $data = shift; # hash filename->content
+    my $msg = shift;  # commit message
+
+    foreach my $fname (sort keys %{$data})
+    {
+        my @path_elements = split('/', $fname);
+
+        # need some recursive majic here
+        
+    }
+}
+
 
 
 
