@@ -233,6 +233,8 @@ sub _gen_data_r1
     my $cnt = 0;
     while( $cnt < $n_nodes )
     {
+        $data->{'counter'} = $cnt;
+        
         my $fname = _data_file_name($cnt+$n_start);
         my $filepath = $repodir1 . '/' . $fname;
         my $dir = substr($filepath, 0, rindex($filepath, '/'));
