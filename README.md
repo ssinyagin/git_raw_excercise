@@ -1,5 +1,5 @@
-Git as a database back-end
-==========================
+Using Git as a database back-end
+================================
 
 This is a set of Perl scripts that demonstrate various usage scenarios
 of Git::Raw module. Their main purpose is a proof of concept for Torrus
