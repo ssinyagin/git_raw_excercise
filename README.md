@@ -8,6 +8,7 @@ configuration database, taking advantage of incremental updates and
 network transport.
 
 
+
 Bulk test with two working directories, fetch and checkout
 ----------------------------------------------------------
 
@@ -30,6 +31,7 @@ long operation, and then it's followed by checkout which unpacks the
 blobs into data files and writes them to the disk.
 
 
+
 Bulk test with direct operations on a bare repository
 -----------------------------------------------------
 
@@ -47,6 +49,25 @@ operations.
 Also, overwriting the data files with the same content is much faster in
 this scenario, because Git calculates the SHA-1 checksum on the data
 file, and avoids extra disk I/O if the blob is already present.
+
+
+
+Read performance before and after git-repack
+--------------------------------------------
+
+```
+perl bulk_perf_repack.pl /var/local/gittests
+```
+
+This script reads the whole amount of JSON files from a repo produced by
+the above bulk test, and then runs `git repack -d` on it, and reads all
+data again. This demonstrates about 2-3 times gain in performance of
+accessing the data. Also the repack command deletes individual blob
+files after packing them, and that will release a large number of
+inodes. This is quite critical for large amounts of data and filesystems
+like ext4.
+
+
 
 
 Example with 3 repositories
@@ -71,6 +92,8 @@ perl example_bare_repo_write.pl /var/local/gittests
 
 This script is a simle example of writing files into a bare Git
 repository, exactly like `bulk_perf_bare_direct.pl` is doing.
+
+
 
 
 
