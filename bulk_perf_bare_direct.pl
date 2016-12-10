@@ -24,11 +24,6 @@ $json->canonical(1);
 
 my $repodir1 = $homedir . '/r1';
 
-my $repodir2;
-my $updated_files;
-my $r2;
-my $checkout_opts;
-
 foreach my $dir ($repodir1)
 {
     remove_tree($dir);
@@ -116,10 +111,6 @@ sub _signature
     return Git::Raw::Signature->now('Z', 'x@x.com');
 }
 
-sub _print_updates
-{
-    printf("Total %d updates\n", scalar(keys %{$updated_files}));
-}
 
 
 sub _print_time
