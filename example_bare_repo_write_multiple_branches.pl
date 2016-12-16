@@ -106,10 +106,7 @@ for(my $i=0; $i < $n_branches; $i++)
 {
     my $branchname = sprintf('br%d', $i);
     
-    my $repo = $repos[$i];
-    my $index = $repo->index();
-        
-    my $branch = Git::Raw::Branch->lookup( $repo, $branchname, 1 );
+    my $branch = Git::Raw::Branch->lookup( $r1, $branchname, 1 );
     die("Cannot lookup $branchname") unless defined($branch);
     
     my $tree = $branch->peel('tree');
