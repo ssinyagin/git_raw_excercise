@@ -34,7 +34,7 @@ foreach my $dir ($repodir1)
 
 my $ts_start = time();
 my $prev_ts = $ts_start;
-    
+
 
 ## Producer repo
 my $r1 = Git::Raw::Repository->init($repodir1, 1);
@@ -54,7 +54,7 @@ my $odb_path = catfile($r1->path, 'objects', 'pack');
     my $tree = $index->write_tree;
     my $me = _signature();
     $r1->commit('First empty commit', $me, $me, [], $tree);
-	_create_packfile();
+    _create_packfile();
 
     my $branch = Git::Raw::Branch->lookup( $r1, 'master', 1 );
     $branch->move('DataTree', 1);
@@ -105,14 +105,14 @@ _read_data();
     my $head = $r1->head->target;
     my $msg = sprintf('Deleted %d files', $n_delete);
     $r1->commit($msg, $me, $me, [$head], $tree);
-	_create_packfile();
+    _create_packfile();
     _print_time('Commit: ' . $msg);
 }
 
 _read_data();
 
 
-        
+
 
 sub _signature
 {
@@ -198,7 +198,7 @@ sub _gen_data_r1
     my $head = $r1->head->target;
     $r1->commit($msg, $me, $me, [$head], $tree);
     _print_time('Commit: ' . $msg);
-	_create_packfile();
+    _create_packfile();
     _print_time('Indexed packfile');
 }
 
@@ -229,7 +229,7 @@ sub _read_data
         printf("Previous commit is undefined, reading the whole tree\n");
 
         foreach my $entry ($head_tree->entries())
-    {
+        {
             $count_read += _read_entry($entry);
         }
     }
@@ -237,15 +237,16 @@ sub _read_data
     {
         printf("Reading a delta from previous commit\n");
         
-    my $diff = $prev_tree->diff(
+        my $diff = $prev_tree->diff(
             {'tree' => $head_tree,
-             'skip_binary_check' => 1,
-             'enable_fast_untracked_dirs' => 1,
+             'flags' => {
+                 'skip_binary_check' => 1,
+             },
             });
         
-    my @deltas = $diff->deltas();
-    foreach my $delta (@deltas)
-    {
+        my @deltas = $diff->deltas();
+        foreach my $delta (@deltas)
+        {
             my $path = $delta->new_file()->path();
             
             if ($delta->status() ne 'deleted')
@@ -259,7 +260,7 @@ sub _read_data
                 # print "[$path] REMOVED!\n";
                 $count_deleted++;
             }
-    }
+        }
     }
 
     $prev_tree = $head_tree;
@@ -299,10 +300,10 @@ sub _read_entry
     elsif( $object->is_tree() )
     {
         foreach my $child_entry ($object->entries())
-    {
+        {
             $ret += _read_entry($child_entry, $path);
         }
     }
-        
+    
     return $ret;
 }

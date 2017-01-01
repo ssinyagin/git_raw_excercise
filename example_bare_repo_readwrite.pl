@@ -42,9 +42,6 @@ my $msg_filename = 'x/y/msg.txt';
     my $tip_tree = $branch->peel('tree');
     $index->read_tree($tip_tree);
     
-    # must re-read the index from libgit2
-    $index = $r1->index();
-
     $index->add_frombuffer($msg_filename, "msg 1\n");
     my $tree = $index->write_tree();
 
